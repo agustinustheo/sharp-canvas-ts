@@ -1,42 +1,97 @@
-import sharp from 'sharp';
-import { createCanvas, registerFont } from 'canvas';
+import sharp from "sharp";
+import { createCanvas, registerFont, CanvasRenderingContext2D } from "canvas";
 
-async function addTextToImage(imagePath: string, outputPath: string, text: string, fontPath: string, fontSize: number = 48) {
+const maxWidth = 125;
+
+function wrapText(
+  context: CanvasRenderingContext2D,
+  text: string,
+  maxWidth: number,
+) {
+  const words = text.split(" ");
+  let lines: string[] = [];
+  let currentLine: string = words[0];
+
+  for (let i = 1; i < words.length; i++) {
+    let word = words[i];
+    let width = context.measureText(currentLine + " " + word).width;
+    if (width < maxWidth) {
+      currentLine += " " + word;
+    } else {
+      lines.push(currentLine);
+      currentLine = word;
+    }
+  }
+  lines.push(currentLine); // Push the last line
+  return lines;
+}
+
+function cutAndAddEllipsis(text: string) {
+  if (text.length <= maxWidth) {
+    return text;
+  }
+
+  return text.substring(0, maxWidth) + "...";
+}
+
+async function addTextToImage(
+  imagePath: string,
+  outputPath: string,
+  text: string,
+  fontPath: string,
+  fontSize: number = 48,
+) {
   try {
+    // Cut the text if needed and add an ellipsis
+    text = cutAndAddEllipsis(text);
+
     // Load the original image to get its dimensions
     const originalImage = await sharp(imagePath).metadata();
 
     // Create a canvas that matches the original image's dimensions
     const canvas = createCanvas(originalImage.width!, originalImage.height!);
-    const context = canvas.getContext('2d');
+    const context = canvas.getContext("2d");
 
     // Optional: Register a custom font
-    registerFont(fontPath, { family: 'CustomFont' });
+    registerFont(fontPath, { family: "CustomFont" });
     context.font = `${fontSize}px CustomFont`;
-    context.textAlign = 'center';
-    context.textBaseline = 'middle';
-    context.fillStyle = 'black'; // Text color
+    context.fillStyle = "black"; // Text color
+    context.textAlign = "left";
+    context.textBaseline = "top";
 
-    // Calculate text position (center of the image)
-    const textX = canvas.width / 2;
-    const textY = canvas.height / 2;
+    const maxWidth = originalImage.width! * 0.8; // Max width for the text
+    const lineHeight = fontSize * 1.2; // Line height
+    const lines = wrapText(context, text, maxWidth);
+    const textHeight = lines.length * lineHeight; // Calculate the total height of the text block
 
-    // Add text to the canvas
-    context.fillText(text, textX, textY);
+    // Calculate the starting Y position to center the text block
+    const startY = (originalImage.height! - textHeight) / 2;
+
+    // Draw each line of text
+    lines.forEach((line, i) => {
+      const x = (originalImage.width! - context.measureText(line).width) / 2; // Center each line
+      const y = startY + i * lineHeight;
+      context.fillText(line, x, y);
+    });
 
     // Convert the canvas to a Buffer
     const textBuffer = canvas.toBuffer();
 
     // Overlay the text image on the original image
     await sharp(imagePath)
-      .composite([{ input: textBuffer, blend: 'over' }])
+      .composite([{ input: textBuffer, blend: "over" }])
       .toFile(outputPath);
 
-    console.log('Image processed and saved to:', outputPath);
+    console.log("Image processed and saved to:", outputPath);
   } catch (error) {
-    console.error('Error processing image:', error);
+    console.error("Error processing image:", error);
   }
 }
 
 // Example usage - adjust fontPath and imagePath as necessary
-addTextToImage('./template.jpg', './output-image-with-text.jpg', 'Hello, World!', './font.otf');
+addTextToImage(
+  "./template.jpg",
+  "./output-image-with-text.jpg",
+  "As the sun dipped below the horizon, casting hues of orange and pink across the sky, the quiet town came to life with the gentle...",
+  "./font.otf",
+);

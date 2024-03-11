@@ -38,20 +38,8 @@ npm install
 4. Run the script to add text to your image (make sure to replace `input-image.jpg` with the path to your image and `your-text` with the text you want to overlay):
 
 ```bash
-npx ts-node addTextToImage.ts ./input-image.jpg ./output-image.jpg "Your Text" "./path/to/your/font.ttf"
+npm run script
 ```
-
-## Usage
-
-Explain how to use your project, including examples of common use cases.
-
-### Adding Text to an Image
-
-```bash
-npx ts-node addTextToImage.ts <input-image-path> <output-image-path> "<text>" "<font-path>"
-```
-
-Make sure to replace `<input-image-path>`, `<output-image-path>`, `<text>`, and `<font-path>` with your actual file paths and text.
 
 ## License
 
