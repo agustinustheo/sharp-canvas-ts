@@ -1,7 +1,19 @@
 import sharp from "sharp";
-import { createCanvas, registerFont, CanvasRenderingContext2D } from "canvas";
+import axios from "axios";
+import { createCanvas, CanvasRenderingContext2D } from "canvas";
 
 const maxWidth = 125;
+
+async function downloadImage(url: string) {
+  try {
+    // Fetch the image using axios with responseType set to 'arraybuffer'
+    const response = await axios.get(url, { responseType: "arraybuffer" });
+    return response.data;
+  } catch (e) {
+    console.error("Error downloading image:", e);
+    throw e;
+  }
+}
 
 function wrapText(
   context: CanvasRenderingContext2D,
@@ -42,19 +54,21 @@ async function addTextToImage(
   fontSize: number = 48,
 ) {
   try {
+    // Download image
+    const imageBuffer = await downloadImage(imagePath);
+
     // Cut the text if needed and add an ellipsis
     text = cutAndAddEllipsis(text);
 
     // Load the original image to get its dimensions
-    const originalImage = await sharp(imagePath).metadata();
+    const originalImage = await sharp(imageBuffer).metadata();
 
     // Create a canvas that matches the original image's dimensions
     const canvas = createCanvas(originalImage.width!, originalImage.height!);
     const context = canvas.getContext("2d");
 
     // Optional: Register a custom font
-    registerFont(fontPath, { family: "CustomFont" });
-    context.font = `${fontSize}px CustomFont`;
+    context.font = `${fontSize}px sans-serif`;
     context.fillStyle = "black"; // Text color
     context.textAlign = "left";
     context.textBaseline = "top";
@@ -78,7 +92,7 @@ async function addTextToImage(
     const textBuffer = canvas.toBuffer();
 
     // Overlay the text image on the original image
-    await sharp(imagePath)
+    await sharp(imageBuffer)
       .composite([{ input: textBuffer, blend: "over" }])
       .toFile(outputPath);
 
@@ -90,7 +104,7 @@ async function addTextToImage(
 
 // Example usage - adjust fontPath and imagePath as necessary
 addTextToImage(
-  "./template.jpg",
+  "https://raw.githubusercontent.com/agustinustheo/sharp-canvas-ts/main/template.jpg",
   "./output-image-with-text.jpg",
   "As the sun dipped below the horizon, casting hues of orange and pink across the sky, the quiet town came to life with the gentle...",
   "./font.otf",
